@@ -1,14 +1,18 @@
 ﻿using UnityEngine;
 using System.Collections;
+using System.Collections.Generic;
 
 namespace JDK.Pool
 {
 
 	public class UnityPrefabObjectPool : MonoBehaviour, IObjectPool<GameObject>{
 
+		//TODO, override its DestroyObject method
 		private ObjectPool<GameObject> InnerPool {get;set;}
 
-		public GameObject prefab;
+		public GameObject Prefab {get;set;}
+
+		public string prefabPath;
 
 		void Awake()
 		{
@@ -17,7 +21,7 @@ namespace JDK.Pool
 
 		private GameObject CreateObjectFromPrefab()
 		{
-			var go = GameObject.Instantiate(prefab) as GameObject;
+			var go = GameObject.Instantiate(Prefab) as GameObject;
 			go.SetActive(false);
 
 			return go;
@@ -75,6 +79,55 @@ namespace JDK.Pool
 		}
 
 #endregion
+
+
+	}
+
+	public static class PrefabPoolHelper
+	{
+		private static IDictionary<string, string> prefabPathDict;
+
+		private static IDictionary<string, UnityPrefabObjectPool> prefabPoolDict;
+		public static GameObject GetPrefabObject(this PoolManager mgr, string key)
+		{
+			if (prefabPoolDict.ContainsKey(key))
+			{
+				return prefabPoolDict[key].Get();
+			}
+
+			return null;
+		}
+
+		public static void RegisterPrefabPool(this PoolManager mgr, string key, UnityPrefabObjectPool p)
+		{
+			if (prefabPoolDict.ContainsKey(key))
+			{
+				Logger.Debug("exist key:" + key + ", destroy origin and use new instead");
+
+				var originPool = prefabPoolDict[key];
+				GameObject.Destroy(originPool);
+			}
+
+			Object.DontDestroyOnLoad(p);
+			prefabPoolDict[key] = p;
+		}
+
+		public static void RegisterPrefabPool(this PoolManager mgr, string key, string prefabPath)
+		{
+			GameObject go = new GameObject("PrefabPool-" + key);
+			var pool = go.AddComponent<UnityPrefabObjectPool>();
+
+			pool.Prefab = Resources.Load(prefabPath) as GameObject;
+
+			if (pool.Prefab == null)
+			{
+				Logger.Debug("prefab load failed");
+			}
+
+			RegisterPrefabPool(mgr, key, pool);
+		}
+
+
 	}
 
 }
