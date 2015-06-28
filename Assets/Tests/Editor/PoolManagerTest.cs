@@ -18,12 +18,12 @@ public class PoolManagerTest {
 		var t = typeof(MyTestClass);
 		var pool = PoolManager.Instance.GetPool(t);
 
-		Assert.IsNull(pool);
+		Assert.IsNotNull(pool);
 
 		PoolManager.Instance.RegisterPool(t, new ObjectPool<MyTestClass>());
 
-		pool = PoolManager.Instance.GetPool(t);
-		Assert.IsNotNull(pool);
+		var pool2 = PoolManager.Instance.GetPool(t);
+		Assert.NotNull(pool2);
 
 
 	}

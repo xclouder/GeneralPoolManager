@@ -4,101 +4,6 @@ using System.Collections.Generic;
 
 namespace JDK.Pool
 {
-	public interface IObjectPool
-	{
-		Object Get();
-		bool Return(Object o);
-		
-		void Shutdown();
-		
-		void PreWarm(int warmCount);
-		
-	}
-	
-	public interface IObjectPool<T> : IObjectPool where T : class
-	{
-		new T Get();
-		bool Return(T o);
-	}
-	
-	public class ObjectPool<T> : IObjectPool<T> where T : class
-	{
-		
-		public static ObjectPool<T> Create(Type t)
-		{
-			var genericType = typeof(ObjectPool<>);
-			var poolType = genericType.MakeGenericType(new Type[]{t});
-			
-			return Activator.CreateInstance(poolType) as ObjectPool<T>;
-		}
-		
-		private Func<T> CreateObjectFunc;
-		private Queue<T> objectQueue;
-		
-		public ObjectPool()
-		{
-			
-		}
-		
-		public ObjectPool(Func<T> crtFunc)
-		{
-			objectQueue = new Queue<T>();
-			CreateObjectFunc = crtFunc;
-		}
-		
-		public T Get()
-		{
-			if (objectQueue.Count > 0)
-			{
-				return objectQueue.Dequeue();
-			}
-			else
-			{
-				return CreateObject();
-			}
-		}
-
-		Object IObjectPool.Get()
-		{
-			return null;
-		}
-		
-		private T CreateObject()
-		{
-			if (CreateObjectFunc!= null)
-			{
-				return CreateObjectFunc();
-			}
-			
-			return Activator.CreateInstance<T>();
-		}
-		
-		public bool Return(Object o)
-		{
-			objectQueue.Enqueue(o as T);
-
-			return true;
-		}
-		
-		public bool Return(T o)
-		{
-			objectQueue.Enqueue(o);
-
-			return true;
-		}
-
-		public void Shutdown()
-		{
-			throw new NotImplementedException();
-		}
-		
-		public void PreWarm(int warmCount)
-		{
-			throw new NotImplementedException();
-		}
-		
-	}
-	
 	public class PoolManager
 	{
 		private IDictionary<Type, IObjectPool> poolDict;
@@ -106,9 +11,12 @@ namespace JDK.Pool
 		private PoolManager(){
 			
 			poolDict = new Dictionary<Type, IObjectPool>();
-			
+
 		}
-		
+
+//		public Func<IObjectPool<T>> CommonPoolGenerateFunc<T> {get;set;}
+
+
 		private static PoolManager instance;
 		public static PoolManager Instance{
 			get {
@@ -171,15 +79,23 @@ namespace JDK.Pool
 		{
 			if (!poolDict.ContainsKey(t))
 			{
-				return null;
+				var p = CreateCommonPool(t);
+				poolDict[t] = p;
+
+				return p;
 			}
 			
 			return poolDict[t];
 		}
+
+		public bool ContainsPoolForType(Type t)
+		{
+			return poolDict.ContainsKey(t);
+		}
 		
 		public void RegisterPool(Type t, IObjectPool pool)
 		{
-			if (GetPool(t) != null)
+			if (ContainsPoolForType(t))
 			{
 				Logger.Warning("pool for t:" + t.Name + " exist, now replace it with " + pool.GetType().Name);
 			}
@@ -194,13 +110,14 @@ namespace JDK.Pool
 				throw new ArgumentException("Generic ObjetPool cannot create a ValueType Version");
 			}
 			
-			var genericPoolType = typeof(IObjectPool<>);
+			var genericPoolType = typeof(ObjectPool<>);
 			var typeArgs = new Type[] { t };
 			var poolType = genericPoolType.MakeGenericType(typeArgs);
-			
+
 			return Activator.CreateInstance(poolType) as IObjectPool;
 		}
-		
+
+		//TODO: How to do this with Func<T>?
 		private IObjectPool CreateCommonPool<T>() where T : class
 		{
 			return new ObjectPool<T>();
@@ -210,13 +127,11 @@ namespace JDK.Pool
 		{
 			foreach (IObjectPool p in poolDict.Values)
 			{
-				//shutdown
-				
+				p.Shutdown();
 			}
 			
 			poolDict.Clear();
 		}
-		
+
 	}
-	
 }
