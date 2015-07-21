@@ -16,13 +16,13 @@ class MyResetableClass : IPoolable
 void Demo()
 {
     var o = PoolManager.Instance.GetObject<MyClass>();
-		Assert.IsTrue(o != null && o.GetType() == typeof(MyClass));
+    Assert.IsTrue(o != null && o.GetType() == typeof(MyClass));
 
-		var origin = o;
+    var origin = o;
 
-		PoolManager.Instance.ReturnObject(o);
-		var another = PoolManager.Instance.GetObject<MyClass>();
+    PoolManager.Instance.ReturnObject(o);
+    var another = PoolManager.Instance.GetObject<MyClass>();
 
-		Assert.IsTrue(another == origin);
+    Assert.IsTrue(another == origin);
 }
 ```
